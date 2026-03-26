@@ -53,7 +53,7 @@ Startet Container im default bridge
 - `-i`  interaktiv  
 - `-t`  Terminal  
 - `--name busybox1`  Name  
-- `busybox1`  Image  
+- `busybox`  Image  
 - `sh`  Shell starten  
 
 ```bash

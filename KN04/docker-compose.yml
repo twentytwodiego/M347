@@ -1,0 +1,33 @@
+version: '3.8'
+
+services:
+  # Webserver
+  webserver:
+    container_name: m347-kn04a-web
+    build: ./web
+    ports:
+      - "8600:80"
+    networks:
+      m347-net:
+        ipv4_address: 172.10.5.1 
+
+  # Datenbank:
+  database:
+    container_name: m347-kn04a-db
+    image: mariadb:latest
+    environment:
+      - MARIADB_ROOT_PASSWORD=ChapoZumMulato
+    networks:
+      m347-net:
+        aliases:
+          - kn02b-db
+        ipv4_address: 172.10.5.2
+
+networks:
+  m347-net:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.10.0.0/16
+          ip_range: 172.10.5.0/24
+          gateway: 172.10.5.254

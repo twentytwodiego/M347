@@ -1,0 +1,113 @@
+#cloud-config
+# source: https://gist.github.com/syntaqx/9dd3ff11fb3d48b032c84f3e31af9163
+users:
+  - name: ubuntu
+    sudo: ALL=(ALL) NOPASSWD:ALL
+    groups: users, admin
+    home: /home/ubuntu
+    shell: /bin/bash
+    ssh_authorized_keys:
+      - ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQCUBo+qnNu5xxM9vfz4C04M36FHxHNrEMdm5TkFj1/SfVtqunlUOeMpu7nFCZZKnX8HYwf/MkjcBiTYAgncxku8grwl6XuW/pcvmb6/ghSIaw4xtRRSzit7omqJ5d8kXB3+Nd1aaMHsjfly4nkaqswhySVXQqr8Hw6DbWVw8jLLVKEE+5NZHY33hJkhJwK4blCllsGpmQaKi1qxjsN0hZOWNK01iJAydwD8t2xJ0NOYbq8Qas5IyPnRN7SPxvEhIP6WLQ6Ym6Dmf8FwNW1cHLTKabgjzt5f/HKUkKS89dPd3fn4nnFli1BOMECGUIvVlOw2pQNri7+04OOfn2FGlqr5 teacher
+      - ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQCnl1YIjGKE5C3giHRPwDHhCtF3RUWQ6cOL4P+hCJ1nuLbeHC6AfzJCaVldA6M4z6r8kHtnAjUDm3yffBEI0bkUr6cL48iLs581K+t+93/LYdU0HVxUNCf3R6wUuxWEF+bYhm/yH2/oJpGZEHVgj8AbtEz2eco0YpJHf+o5XPF9eWZybVq4wknow2Om3P2epjktvXP86kWPpn5rzPFhtn6FqOnPjMoPyWASO+PtF4P8YqZAUWgDuTbkTeH8/MZIuloF+dQWQWKgDNkntH316iy9WUjT4MuhLw801CGUMn9JO69hH53/AuRyjqOq0XQCwF0rQDwBomH0D30pMn7CO01f
+ssh_pwauth: false
+disable_root: false
+package_update: true
+package_upgrade: true
+groups:
+  - docker
+system_info:
+  default_user:
+    groups: [docker]
+packages:
+  - apt-transport-https
+  - ca-certificates
+  - curl
+  - gnupg
+  - lsb-release
+  - unattended-upgrades
+final_message: "The system is finally up, after $UPTIME seconds"
+write_files:
+  - path: /opt/myapp/docker-compose.yml
+    content: |
+      services:
+        db:
+          image: mariadb:latest
+          container_name: m347-kn04a-db
+          environment:
+            MYSQL_ROOT_PASSWORD: ChapoZumMulato
+          networks:
+            kn04a_net:
+              ipv4_address: 172.10.5.10
+              aliases:
+                - kn02b-db
+ 
+        web:
+          build:
+            context: ./web
+            dockerfile: Dockerfile
+          container_name: m347-kn04a-web
+          depends_on:
+            - db
+          ports:
+            - "80:80"
+          networks:
+            kn04a_net:
+              ipv4_address: 172.10.5.20
+ 
+      networks:
+        kn04a_net:
+          driver: bridge
+          ipam:
+            config:
+              - subnet: 172.10.0.0/16
+                ip_range: 172.10.5.0/24
+                gateway: 172.10.5.254
+  - path: /opt/myapp/web/Dockerfile
+    content: |
+      FROM php:8.0-apache
+      RUN docker-php-ext-install mysqli
+      WORKDIR /var/www/html
+      COPY info.php .
+      COPY db.php .
+      EXPOSE 80
+  - path: /opt/myapp/web/info.php
+    content: |
+      <?php
+      phpinfo();
+      ?>
+  - path: /opt/myapp/web/db.php
+    content: |
+      <html>
+        <head></head>
+        <body>
+          Diese Seite macht eine Abfrage auf die Datenbank. <br />
+          Das ausgefuehrte Query ist: <i>select Host, User from mysql.user;</i><br /><br />
+          Das Resultat: <br />
+          <?php
+            $servername = "kn02b-db";
+            $username = "root";
+            $password = "ChapoZumMulato";
+            $dbname = "mysql";
+ 
+            $conn = new mysqli($servername, $username, $password, $dbname);
+            if ($conn->connect_error) {
+                die("Connection failed: " . $conn->connect_error);
+            }
+            $sql = "select Host, User from mysql.user;";
+            $result = $conn->query($sql);
+            while($row = $result->fetch_assoc()){
+                echo("<li>" . $row["Host"] . " / " . $row["User"] . "</li>");
+            }
+          ?>
+        </body>
+      </html>
+runcmd:
+  - mkdir -p /etc/apt/keyrings
+  - curl -fsSL https://download.docker.com/linux/ubuntu/gpg | gpg --dearmor -o /etc/apt/keyrings/docker.gpg
+  - echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable" | tee /etc/apt/sources.list.d/docker.list > /dev/null
+  - apt-get update
+  - apt-get install -y docker-ce docker-ce-cli containerd.io docker-compose-plugin
+  - systemctl enable docker
+  - systemctl start docker
+  - cd /opt/myapp
+  - docker compose up -d

@@ -1,0 +1,29 @@
+services:
+  # Webserver
+  webserver:
+    container_name: m347-kn04b-web
+    image: diegomulato/m347:kn02b-web
+    ports:
+      - "8121:80"
+    networks:
+      m347-net:
+        ipv4_address: 172.22.9.1
+
+  # Datenbank:
+  database:
+    container_name: m347-kn04b-db
+    image: diegomulato/m347:kn02b-db
+    environment:
+      - MARIADB_ROOT_PASSWORD=ChapoZumMulato
+    networks:
+      m347-net:
+        ipv4_address: 172.22.9.2
+
+networks:
+  m347-net:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.22.0.0/16
+          ip_range: 172.22.9.0/24
+          gateway: 172.22.9.254
